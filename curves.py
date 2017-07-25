@@ -16,13 +16,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import UnivariateSpline
 
+def ImputeZeros(_x, _y):
+    """Returns modified in-place versions _x & _y where the value of zero is slightly shifted by DELTA"""
+    _x = list(_x) #because tuples are special creatures...
+    _y = list(_y)
+
+    # Do not worry about overflow errors: (RuntimeWarning: overflow encountered in power)...
+    # Numbers will still compute and print...see output, this same example running is something like [-9.62392027] for that one model
+    DELTA = 2**(-256)
+    for i in range(len(_x)):
+        if _x[i]==0:
+            _x[i] += DELTA
+        if _y[i]==0:
+            _y[i] += DELTA
+    return tuple(_x), tuple(_y) #re-cast the modified lists as tuples befoire returning
+
 # import multipolyfit as mpf
-def InferSpline(x,y,cityname,modelname,savefigures,GRANULARITY=500):
+def InferSpline(x,y,cityname,modelname,savefigures,degree=3,GRANULARITY=500):
     x_lin = np.linspace(min(x),max(x),GRANULARITY)
-    #make sure you don't have any zeroes around, or else you'll get an -Inf.
+
+    # make sure you don't have any zeroes around, or else you'll get an -Inf.
     # I don't know what that does to splines, all I know is that it can't be good
-    spl = UnivariateSpline(np.log(x),np.log(y))
+    #print "X = ", x
+    #print "Y = ", y
+    #print "log(X) = ", np.log(x)
+    #print "log(Y) = ", np.log(y)
+
+    x_clean,y_clean = ImputeZeros(x,y)
+    spl = UnivariateSpline(np.log(x_clean),np.log(y_clean),k=degree)
     y_lin = np.exp(spl(np.log(x_lin)))
+
     if savefigures:
         plt.plot(x, y, 'kx')
         plt.plot(x_lin, y_lin, 'b-')
